@@ -94,7 +94,7 @@ describe.runIf(DATABASE_URL)('сведение состояний', () => {
   })
 
   beforeEach(async () => {
-    await pool.query('truncate sandboxes')
+    await pool.query('truncate sandboxes cascade')
     docker.containers = []
     docker.routed = new Set()
     docker.failStart = false

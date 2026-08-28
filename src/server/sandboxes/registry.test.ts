@@ -26,7 +26,7 @@ describe.runIf(DATABASE_URL)('реестр имён сэндбоксов', () =>
   })
 
   beforeEach(async () => {
-    await pool.query('truncate sandboxes')
+    await pool.query('truncate sandboxes cascade')
   })
 
   it('резервирует имя за пользователем', async () => {

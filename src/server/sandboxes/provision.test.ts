@@ -44,7 +44,7 @@ describe.runIf(DATABASE_URL)('создание сэндбокса', () => {
   })
 
   beforeEach(async () => {
-    await pool.query('truncate sandboxes')
+    await pool.query('truncate sandboxes cascade')
   })
 
   it('порождает репозиторий и связывает его с зарезервированным именем', async () => {

@@ -7,6 +7,7 @@ import { createGitHubJwks } from './registry/oidc.ts'
 import { createRegistryRoutes } from './routes/registry.ts'
 import { createRegistryEventRoutes } from './routes/registry-events.ts'
 import { setDesiredImage } from './runtime/state.ts'
+import { recordImage } from './runtime/images.ts'
 import { sandboxHostMiddleware } from './routes/sandbox-host.ts'
 import { resolveSandboxState } from './sandbox-status/resolve.ts'
 import { createProvision } from './sandboxes/provision.ts'
@@ -39,7 +40,13 @@ async function main() {
     sandboxState: (name) => resolveSandboxState({ env: config, pool, signing }, name),
     registryEvents: createRegistryEventRoutes({
       env: config,
-      onImagePushed: (name, digest) => setDesiredImage(pool, name, digest),
+      onImagePushed: async (name, digest) => {
+        const known = await setDesiredImage(pool, name, digest)
+        // Момент публикации нужен, чтобы потом удалять именно старые образы:
+        // сам реестр времени не хранит.
+        if (known) await recordImage(pool, name, digest)
+        return known
+      },
     }),
     registryRoutes: createRegistryRoutes({
       env: config,

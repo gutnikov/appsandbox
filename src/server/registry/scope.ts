@@ -8,7 +8,8 @@ export type AccessRequest = {
   actions: string[]
 }
 
-const ALLOWED_ACTIONS = new Set(['push', 'pull'])
+// delete нужен платформе для чистки старых образов; сборке он не выдаётся.
+const ALLOWED_ACTIONS = new Set(['push', 'pull', 'delete'])
 
 export function parseScopes(scopes: readonly string[]): AccessRequest[] {
   const requests: AccessRequest[] = []
@@ -42,6 +43,8 @@ export function parseScopes(scopes: readonly string[]): AccessRequest[] {
  * единственным своим образом. Всё остальное отбрасывается молча — по
  * протоколу реестр сам вернёт отказ, увидев пустой access.
  */
+const BUILD_ACTIONS = new Set(['push', 'pull'])
+
 export function grantOnly(
   requests: readonly AccessRequest[],
   allowedRepository: string,
@@ -51,7 +54,8 @@ export function grantOnly(
     .map((request) => ({
       type: 'repository',
       name: request.name,
-      actions: request.actions.filter((action) => ALLOWED_ACTIONS.has(action)),
+      // Сборке — только публикация и чтение: удалять образы она не должна.
+      actions: request.actions.filter((action) => BUILD_ACTIONS.has(action)),
     }))
     .filter((request) => request.actions.length > 0)
 }

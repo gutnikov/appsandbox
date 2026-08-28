@@ -1,0 +1,8 @@
+[Unit]
+Description=Сборка мусора в реестре образов zerotomvp
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/etc/zerotomvp/registry-gc.sh

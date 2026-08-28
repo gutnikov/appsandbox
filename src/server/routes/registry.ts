@@ -45,11 +45,21 @@ function readCredential(header: string | undefined): Credential | undefined {
   return { user: decoded.slice(0, separator), password }
 }
 
-/** Право только на чтение: внутренним службам большего не нужно. */
-function pullOnly(requests: readonly { type: string; name: string }[]) {
+/**
+ * Внутренним службам даём чтение и удаление, но не запись: публиковать
+ * образы вправе только сборка в репозитории владельца.
+ */
+const PLATFORM_ACTIONS = ['pull', 'delete']
+
+function platformAccess(requests: readonly { type: string; name: string; actions: string[] }[]) {
   return requests
     .filter((request) => request.type === 'repository' && request.name)
-    .map((request) => ({ type: 'repository', name: request.name, actions: ['pull'] }))
+    .map((request) => ({
+      type: 'repository',
+      name: request.name,
+      actions: request.actions.filter((action) => PLATFORM_ACTIONS.includes(action)),
+    }))
+    .filter((request) => request.actions.length > 0)
 }
 
 export function createRegistryRoutes(deps: RegistryRoutesDeps) {
@@ -82,7 +92,7 @@ export function createRegistryRoutes(deps: RegistryRoutesDeps) {
         issuer: deps.env.PUBLIC_BASE_URL,
         service,
         subject: PLATFORM_PULL_USER,
-        access: pullOnly(parseScopes(scopes)),
+        access: platformAccess(parseScopes(scopes)),
       })
 
       return c.json({

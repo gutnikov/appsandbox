@@ -30,7 +30,7 @@ describe.runIf(DATABASE_URL)('поддомен сэндбокса', () => {
   })
 
   beforeEach(async () => {
-    await pool.query('truncate sandboxes')
+    await pool.query('truncate sandboxes cascade')
   })
 
   /** registryStatus: что отвечает реестр на запрос списка тегов. */
