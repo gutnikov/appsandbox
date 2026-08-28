@@ -9,10 +9,7 @@ import { KEEP_IMAGES, pruneImages } from './images.ts'
 /** Как часто сверяем желаемое с фактическим. */
 const TICK_MS = 3_000
 
-/** Ограничения на сэндбокс. Сервер маленький, поэтому они тесные. */
-const LIMITS = { memoryMb: 160, cpus: 0.5, network: 'zerotomvp-sandboxes' }
-const MAX_RUNNING = 3
-const LIFETIME_MS = 30 * 60 * 1000
+const SANDBOX_NETWORK = 'zerotomvp-sandboxes'
 /** Чистка реестра идёт редко: она не срочная и лишний раз его дёргать незачем. */
 const PRUNE_EVERY_TICKS = 60
 
@@ -43,18 +40,25 @@ async function main() {
     config.REGISTRY_TOKEN_KID,
   )
 
+  const limits = {
+    memoryMb: config.SANDBOX_MEMORY_MB,
+    cpus: config.SANDBOX_CPUS,
+    network: SANDBOX_NETWORK,
+  }
+  const lifetimeMs = config.SANDBOX_LIFETIME_MINUTES * 60_000
+
   const reconciler = new Reconciler({
     env: config,
     pool,
-    limits: LIMITS,
-    maxRunning: MAX_RUNNING,
-    lifetimeMs: LIFETIME_MS,
+    limits,
+    maxRunning: config.SANDBOX_MAX_RUNNING,
+    lifetimeMs,
   })
 
   console.log(
-    `сведение состояний запущено: не больше ${MAX_RUNNING} одновременно, ` +
-      `${LIMITS.memoryMb} МБ и ${LIMITS.cpus} процессора на сэндбокс, ` +
-      `время жизни ${LIFETIME_MS / 60000} мин`,
+    `сведение состояний запущено: не больше ${config.SANDBOX_MAX_RUNNING} одновременно, ` +
+      `${limits.memoryMb} МБ и ${limits.cpus} процессора на сэндбокс, ` +
+      `время жизни ${config.SANDBOX_LIFETIME_MINUTES} мин`,
   )
 
   let stopping = false

@@ -34,6 +34,13 @@ const schema = z.object({
   REGISTRY_PULL_SECRET: z.string().min(24),
   /** Пароль, которым реестр подтверждает, что уведомление о публикации от него. */
   REGISTRY_EVENTS_SECRET: z.string().min(24),
+
+  // Границы для сэндбоксов зависят от сервера, а не от версии образа,
+  // поэтому задаются окружением и меняются без пересборки.
+  SANDBOX_MAX_RUNNING: z.coerce.number().int().positive().default(3),
+  SANDBOX_LIFETIME_MINUTES: z.coerce.number().int().positive().default(30),
+  SANDBOX_MEMORY_MB: z.coerce.number().int().positive().default(160),
+  SANDBOX_CPUS: z.coerce.number().positive().default(0.5),
 })
 
 export type Env = z.infer<typeof schema>

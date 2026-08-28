@@ -65,6 +65,11 @@ env:
     TEMPLATE_REPO: gutnikov/sandbox-template
     REGISTRY_HOST: registry.zerotomvp.xyz
     REGISTRY_TOKEN_KID: zerotomvp-registry-1
+    # Пределы для сэндбоксов: сервер 1 vCPU / 889 МБ, свободно около 500.
+    SANDBOX_MAX_RUNNING: 3
+    SANDBOX_LIFETIME_MINUTES: 30
+    SANDBOX_MEMORY_MB: 160
+    SANDBOX_CPUS: 0.5
   secret:
     - DATABASE_URL
     - SESSION_SECRET

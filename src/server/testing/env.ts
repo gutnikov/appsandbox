@@ -18,6 +18,10 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     REGISTRY_INTERNAL_URL: 'http://registry.internal:5000',
     REGISTRY_PULL_SECRET: 'test-pull-secret-at-least-24-chars',
     REGISTRY_EVENTS_SECRET: 'test-events-secret-at-least-24-chars',
+    SANDBOX_MAX_RUNNING: 3,
+    SANDBOX_LIFETIME_MINUTES: 30,
+    SANDBOX_MEMORY_MB: 160,
+    SANDBOX_CPUS: 0.5,
     ...overrides,
   }
 }
