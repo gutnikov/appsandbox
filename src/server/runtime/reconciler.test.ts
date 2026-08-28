@@ -43,6 +43,19 @@ vi.mock('./docker.ts', () => ({
   login: async () => {},
 }))
 
+const secrets = vi.hoisted(() => ({ fail: false }))
+
+vi.mock('./credentials.ts', async (importOriginal) => {
+  const original = await importOriginal<typeof import('./credentials.ts')>()
+  return {
+    ...original,
+    ensureSecrets: async (...args: Parameters<typeof original.ensureSecrets>) => {
+      if (secrets.fail) throw new Error('Не удалось выдать реквизиты сэндбоксу')
+      return original.ensureSecrets(...args)
+    },
+  }
+})
+
 // Работа с Postgres проверяется отдельно в datastore.test.ts, здесь она
 // только мешала бы: тесту сведения незачем создавать настоящие базы.
 vi.mock('./datastore.ts', async (importOriginal) => ({
@@ -107,6 +120,7 @@ describe.runIf(DATABASE_URL)('сведение состояний', () => {
     docker.routed = new Set()
     docker.failStart = false
     docker.calls = []
+    secrets.fail = false
   })
 
   it('поднимает сэндбокс, которого хотят', async () => {
@@ -249,6 +263,20 @@ describe.runIf(DATABASE_URL)('сведение состояний', () => {
 
     expect(await make().tick()).toBe(true)
     expect(docker.calls).toContain('start:sandbox-one')
+  })
+
+  it('без реквизитов не запускает, а сообщает состоянием', async () => {
+    await seed('sandbox-one', { desired_state: 'running', last_requested_at: new Date() })
+    secrets.fail = true
+
+    // Процесс сведения не должен падать: он обслуживает все сэндбоксы, и один
+    // сломанный не может останавливать остальные.
+    await expect(make().tick()).resolves.toBe(true)
+
+    const row = await read('sandbox-one')
+    expect(row.run_status).toBe('failed')
+    expect(row.run_error).toContain('реквизит')
+    expect(docker.calls).not.toContain('start:sandbox-one')
   })
 
   it('восстанавливает исчезнувший контейнер', async () => {

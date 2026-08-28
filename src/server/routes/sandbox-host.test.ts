@@ -142,6 +142,17 @@ describe.runIf(DATABASE_URL)('поддомен сэндбокса', () => {
     expect(body).not.toContain('registry.internal')
     expect(body).not.toContain('/v2/')
     expect(body).not.toMatch(/Bearer|eyJ/)
+
+    // Реквизиты хранилища сэндбокса наружу не выходят ни при каком состоянии.
+    await pool.query(
+      `update sandboxes
+          set db_password = 'db-password-must-not-leak',
+              session_secret = 'session-secret-must-not-leak'
+        where name = $1`,
+      [NAME],
+    )
+    const again = await bodyOf(app(200, ['latest']))
+    expect(again).not.toContain('must-not-leak')
   })
 
   it('апекс обработчик не трогает', async () => {
