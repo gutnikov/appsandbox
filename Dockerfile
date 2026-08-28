@@ -19,6 +19,9 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile
 
 FROM node:22-alpine
+# Kamal проверяет эту метку перед запуском. Обычно он ставит её сам, но образ
+# собирается в Actions, поэтому метку задаём здесь.
+LABEL service="zerotomvp"
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000

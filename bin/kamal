@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Kamal без Ruby: официальный образ с примонтированным проектом.
+#
+# В контейнер отдаётся только ключ выката, а не весь ~/.ssh — незачем
+# показывать чужому образу остальные ключи.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+KEY="${KAMAL_SSH_KEY:-$HOME/.ssh/zerotomvp_deploy}"
+HOST="$(awk '/^ *- [0-9]/{gsub(/[- ]/,"");print;exit}' "$ROOT/config/deploy.yml")"
+
+# Каталог обязан лежать там, где Docker Desktop делится файлами: в macOS
+# каталог из mktemp попадает в /var/folders, который внутрь не пробрасывается.
+SSH_DIR="$(mktemp -d "$HOME/.cache/zerotomvp-kamal-XXXXXX")"
+trap 'rm -rf "$SSH_DIR"' EXIT
+
+install -m 600 "$KEY" "$SSH_DIR/$(basename "$KEY")"
+# Без -H: Net::SSH внутри Kamal не сопоставляет хешированные записи.
+  ssh-keyscan "$HOST" > "$SSH_DIR/known_hosts" 2>/dev/null || true
+chmod 600 "$SSH_DIR/known_hosts"
+
+exec docker run --rm -i \
+  -v "$ROOT:/workdir" \
+  -v "$SSH_DIR:/root/.ssh" \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e KAMAL_REGISTRY_PASSWORD \
+  -e DATABASE_URL \
+  -e SESSION_SECRET \
+  -e GITHUB_CLIENT_SECRET \
+  -e REGISTRY_TOKEN_KEY \
+  ghcr.io/basecamp/kamal:latest "$@"

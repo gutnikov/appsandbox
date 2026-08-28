@@ -27,10 +27,13 @@ registry:
 builder:
   arch: amd64
 
+# Путь внутри контейнера: Kamal запускается через bin/kamal, который кладёт
+# туда только ключ выката. Ruby 3 локально нет, ставить его ради одной
+# команды незачем.
 ssh:
   user: root
   keys:
-    - ~/.ssh/zerotomvp_deploy
+    - /root/.ssh/zerotomvp_deploy
 
 env:
   clear:
