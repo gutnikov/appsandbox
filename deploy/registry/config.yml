@@ -1,0 +1,40 @@
+# Реестр образов сэндбоксов.
+#
+# Пароли реестр не проверяет: он отправляет клиента за токеном на realm
+# платформы, а сам лишь проверяет подпись выданного токена по JWKS.
+version: 0.1
+
+log:
+  level: info
+  fields:
+    service: registry
+
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+  delete:
+    enabled: true
+  maintenance:
+    uploadpurging:
+      enabled: true
+      age: 168h
+      interval: 24h
+      dryrun: false
+
+http:
+  addr: :5000
+  headers:
+    X-Content-Type-Options: [nosniff]
+  # Отдельный адрес для проверки готовности: /v2/ отвечает 401 и для
+  # health-check не годится.
+  debug:
+    addr: :5001
+
+auth:
+  token:
+    realm: https://zerotomvp.xyz/api/registry/token
+    service: registry.zerotomvp.xyz
+    issuer: https://zerotomvp.xyz
+    jwks: /etc/distribution/jwks.json
+    signingalgorithms:
+      - ES256
