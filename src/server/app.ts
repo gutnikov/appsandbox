@@ -7,7 +7,7 @@ import { type HealthCheck, runHealthChecks } from './health.ts'
 import { type Provision, createAuthRoutes } from './routes/auth.ts'
 import type { Fetch } from './github/oauth.ts'
 
-const CLIENT_DIR = './dist/client'
+const DEFAULT_CLIENT_DIR = './dist/client'
 
 export type AppDeps = {
   env: Env
@@ -15,10 +15,19 @@ export type AppDeps = {
   provision: Provision
   /** Роуты выдачи прав реестру образов. Без них приложение тоже поднимается. */
   registryRoutes?: Hono
+  /** Каталог собранного клиента. Подменяется в тестах. */
+  clientDir?: string
   fetchImpl?: Fetch
 }
 
-export function createApp({ env, healthChecks, provision, registryRoutes, fetchImpl }: AppDeps) {
+export function createApp({
+  env,
+  healthChecks,
+  provision,
+  registryRoutes,
+  clientDir = DEFAULT_CLIENT_DIR,
+  fetchImpl,
+}: AppDeps) {
   const app = new Hono()
 
   app.get('/healthz', async (c) => {
@@ -27,6 +36,11 @@ export function createApp({ env, healthChecks, provision, registryRoutes, fetchI
   })
 
   const api = new Hono()
+
+  // Апекс, на поддоменах которого живут сэндбоксы. Клиент не должен его
+  // угадывать: адрес сэндбокса — это обещание пользователю.
+  api.get('/config', (c) => c.json({ sandboxHost: new URL(env.PUBLIC_BASE_URL).host }))
+
   api.route('/auth', createAuthRoutes({ env, provision, fetchImpl }))
   if (registryRoutes) api.route('/registry', registryRoutes)
   app.route('/api', api)
@@ -35,11 +49,17 @@ export function createApp({ env, healthChecks, provision, registryRoutes, fetchI
   app.all('/api/*', (c) => c.json({ error: 'not_found' }, 404))
 
   if (env.NODE_ENV === 'production') {
-    app.use('/*', serveStatic({ root: CLIENT_DIR }))
+    app.use('/*', serveStatic({ root: clientDir }))
+
+    // Ассета с таким именем нет — значит это устаревшая ссылка, а не
+    // клиентский маршрут. Отдавать здесь HTML со статусом 200 нельзя:
+    // браузер со старой закешированной страницей получил бы разметку
+    // вместо модуля и сломался бы молча вместо честной ошибки.
+    app.all('/assets/*', (c) => c.text('not found', 404))
 
     // Клиентская маршрутизация: любой оставшийся GET отдаёт бандл,
     // иначе прямой переход на /created вернул бы 404.
-    const indexHtml = readFileSync(join(CLIENT_DIR, 'index.html'), 'utf8')
+    const indexHtml = readFileSync(join(clientDir, 'index.html'), 'utf8')
     app.get('*', (c) => c.html(indexHtml))
   }
 

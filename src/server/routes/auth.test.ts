@@ -38,6 +38,7 @@ function harness(options: { env?: Partial<Env>; provision?: Provision } = {}): H
     (async () => ({
       name: 'sandbox-brave-otter',
       repoUrl: 'https://github.com/octocat/sandbox-brave-otter',
+      repoFullName: 'octocat/sandbox-brave-otter',
     }))
 
   return {
@@ -112,7 +113,9 @@ describe('возврат с GitHub', () => {
     })
 
     expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe('/created?name=sandbox-brave-otter')
+    expect(response.headers.get('location')).toBe(
+      '/created?name=sandbox-brave-otter&repo=octocat%2Fsandbox-brave-otter',
+    )
   })
 
   it('не отдаёт токен ни в редиректе, ни в куках', async () => {

@@ -28,7 +28,7 @@ export function createProvision({ pool, env, fetchImpl }: ProvisionDeps): Provis
           fetchImpl,
         )
         await markProvisioned(pool, name, repo)
-        return { name, repoUrl: repo.url }
+        return { name, repoUrl: repo.url, repoFullName: repo.fullName }
       } catch (error) {
         // Реестр не должен содержать имён, за которыми не стоит репозиторий.
         await releaseName(pool, name)

@@ -73,7 +73,7 @@ function app(lookup?: SandboxLookup) {
   return createApp({
     env,
     healthChecks: [],
-    provision: async () => ({ name: 'unused', repoUrl: 'unused' }),
+    provision: async () => ({ name: 'unused', repoUrl: 'unused', repoFullName: 'unused' }),
     registryRoutes: createRegistryRoutes({ env, jwks, signing, lookupSandbox }),
   })
 }

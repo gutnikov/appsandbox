@@ -22,6 +22,8 @@ export const STATE_TTL_MS = 10 * 60 * 1000
 export type ProvisionResult = {
   name: string
   repoUrl: string
+  /** Полное имя репозитория owner/name — страница результата ссылается на него. */
+  repoFullName: string
 }
 
 /**
@@ -99,6 +101,7 @@ export function createAuthRoutes({ env, provision, fetchImpl }: AuthRoutesDeps) 
 
     const target = new URL('/created', env.PUBLIC_BASE_URL)
     target.searchParams.set('name', result.name)
+    target.searchParams.set('repo', result.repoFullName)
     return c.redirect(target.pathname + target.search, 302)
   })
 
