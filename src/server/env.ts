@@ -25,6 +25,8 @@ const schema = z.object({
   REGISTRY_TOKEN_KEY: z.string().min(1),
   /** Должен совпадать с идентификатором ключа в JWKS, который читает реестр. */
   REGISTRY_TOKEN_KID: z.string().min(1),
+  /** Адрес реестра внутри сети контейнеров: ходим напрямую, минуя прокси. */
+  REGISTRY_INTERNAL_URL: z.url().default('http://zerotomvp-registry:5000'),
 })
 
 export type Env = z.infer<typeof schema>

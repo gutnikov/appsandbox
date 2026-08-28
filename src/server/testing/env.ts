@@ -15,6 +15,7 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     REGISTRY_HOST: 'registry.zerotomvp.xyz',
     REGISTRY_TOKEN_KEY: 'unused-in-tests',
     REGISTRY_TOKEN_KID: 'test-key',
+    REGISTRY_INTERNAL_URL: 'http://registry.internal:5000',
     ...overrides,
   }
 }

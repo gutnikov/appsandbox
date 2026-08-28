@@ -5,6 +5,7 @@ import { EnvError, env } from './env.ts'
 import { loadRegistrySigningKey } from './registry/key.ts'
 import { createGitHubJwks } from './registry/oidc.ts'
 import { createRegistryRoutes } from './routes/registry.ts'
+import { sandboxHostMiddleware } from './routes/sandbox-host.ts'
 import { createProvision } from './sandboxes/provision.ts'
 import { findByRepoFullName } from './sandboxes/registry.ts'
 
@@ -31,6 +32,7 @@ async function main() {
     env: config,
     healthChecks: [databaseHealthCheck(pool)],
     provision: createProvision({ pool, env: config }),
+    sandboxHost: sandboxHostMiddleware({ env: config, pool, signing }),
     registryRoutes: createRegistryRoutes({
       env: config,
       jwks: createGitHubJwks(),

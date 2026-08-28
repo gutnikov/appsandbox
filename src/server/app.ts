@@ -5,6 +5,7 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import type { Env } from './env.ts'
 import { type HealthCheck, runHealthChecks } from './health.ts'
 import { type Provision, createAuthRoutes } from './routes/auth.ts'
+import type { MiddlewareHandler } from 'hono'
 import type { Fetch } from './github/oauth.ts'
 
 const DEFAULT_CLIENT_DIR = './dist/client'
@@ -15,6 +16,8 @@ export type AppDeps = {
   provision: Provision
   /** Роуты выдачи прав реестру образов. Без них приложение тоже поднимается. */
   registryRoutes?: Hono
+  /** Обработчик поддоменов сэндбоксов. Без него поддомены получают лендинг. */
+  sandboxHost?: MiddlewareHandler
   /** Каталог собранного клиента. Подменяется в тестах. */
   clientDir?: string
   fetchImpl?: Fetch
@@ -25,6 +28,7 @@ export function createApp({
   healthChecks,
   provision,
   registryRoutes,
+  sandboxHost,
   clientDir = DEFAULT_CLIENT_DIR,
   fetchImpl,
 }: AppDeps) {
@@ -34,6 +38,10 @@ export function createApp({
     const report = await runHealthChecks(healthChecks)
     return c.json(report, report.status === 'ok' ? 200 : 503)
   })
+
+  // После /healthz намеренно: проверка готовности должна отвечать при любом
+  // заголовке Host, иначе health-check прокси сломает выкат.
+  if (sandboxHost) app.use('*', sandboxHost)
 
   const api = new Hono()
 
