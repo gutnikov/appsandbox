@@ -3,15 +3,20 @@ import { join } from 'node:path'
 import { Hono } from 'hono'
 import { serveStatic } from '@hono/node-server/serve-static'
 import type { Env } from './env.ts'
-import { runHealthChecks } from './health.ts'
+import { type HealthCheck, runHealthChecks } from './health.ts'
 
 const CLIENT_DIR = './dist/client'
 
-export function createApp(env: Env) {
+export type AppDeps = {
+  env: Env
+  healthChecks: readonly HealthCheck[]
+}
+
+export function createApp({ env, healthChecks }: AppDeps) {
   const app = new Hono()
 
   app.get('/healthz', async (c) => {
-    const report = await runHealthChecks()
+    const report = await runHealthChecks(healthChecks)
     return c.json(report, report.status === 'ok' ? 200 : 503)
   })
 

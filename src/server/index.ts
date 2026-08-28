@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server'
 import { createApp } from './app.ts'
+import { createPool, databaseHealthCheck } from './db/pool.ts'
 import { EnvError, env } from './env.ts'
 
 function main() {
@@ -14,11 +15,20 @@ function main() {
     throw error
   }
 
-  const app = createApp(config)
+  const pool = createPool(config.DATABASE_URL)
+  const app = createApp({ env: config, healthChecks: [databaseHealthCheck(pool)] })
 
-  serve({ fetch: app.fetch, port: config.PORT }, (info) => {
+  const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
     console.log(`zerotomvp слушает на :${info.port} (${config.NODE_ENV})`)
   })
+
+  const shutdown = () => {
+    server.close(() => {
+      void pool.end().finally(() => process.exit(0))
+    })
+  }
+  process.on('SIGTERM', shutdown)
+  process.on('SIGINT', shutdown)
 }
 
 main()

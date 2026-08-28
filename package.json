@@ -15,7 +15,8 @@
     "build:server": "esbuild src/server/index.ts --bundle --platform=node --target=node20 --format=esm --packages=external --outfile=dist/server/index.js",
     "start": "node dist/server/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "migrate": "tsx --env-file-if-exists=.env src/server/db/migrate-cli.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.1",
@@ -25,6 +26,7 @@
     "clsx": "^2.1.1",
     "hono": "^4.13.5",
     "lucide-react": "^1.35.0",
+    "pg": "^8.23.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tailwind-merge": "^3.6.0",
@@ -34,6 +36,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/router-plugin": "^1.168.35",
     "@types/node": "^26.4.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.1.1",

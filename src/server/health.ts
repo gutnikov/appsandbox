@@ -8,14 +8,12 @@ export type HealthReport = {
   checks: Record<string, 'ok' | 'fail'>
 }
 
-const checks: HealthCheck[] = []
-
-/** Регистрирует проверку готовности. Пока не пройдут все — сервис не готов. */
-export function registerHealthCheck(check: HealthCheck): void {
-  checks.push(check)
-}
-
-export async function runHealthChecks(): Promise<HealthReport> {
+/**
+ * Сервис готов, только когда пройдены все проверки. Проверки передаются
+ * явно, а не регистрируются глобально: так их видно на сборке приложения
+ * и можно подменить в тестах.
+ */
+export async function runHealthChecks(checks: readonly HealthCheck[]): Promise<HealthReport> {
   const entries = await Promise.all(
     checks.map(async (check) => {
       try {
