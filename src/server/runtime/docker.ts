@@ -28,8 +28,13 @@ export function containerName(sandbox: string): string {
   return `zerotomvp-sandbox-${sandbox}`
 }
 
+/**
+ * Имя сервиса в прокси совпадает с именем сэндбокса. Отдельный префикс не
+ * нужен: имена сэндбоксов и так начинаются с `sandbox-`, поэтому спутать их
+ * с сервисами платформы невозможно.
+ */
 function proxyService(sandbox: string): string {
-  return `sandbox-${sandbox}`
+  return sandbox
 }
 
 async function docker(args: string[], timeoutMs = 120_000): Promise<string> {
@@ -170,7 +175,7 @@ export async function routedSandboxes(): Promise<Set<string>> {
   for (const raw of out.split('\n')) {
     // В выводе есть управляющие последовательности оформления — снимаем их.
     const line = raw.replace(/\[[0-9;]*m/g, '')
-    const match = /^\s*sandbox-([a-z0-9-]+)\s/.exec(line)
+    const match = /^\s*(sandbox-[a-z0-9-]+)\s/.exec(line)
     if (match?.[1]) names.add(match[1])
   }
 
