@@ -38,3 +38,22 @@ auth:
     jwks: /etc/distribution/jwks.json
     signingalgorithms:
       - ES256
+
+# Платформа узнаёт о новом образе от самого реестра, а не опросом.
+# Пароль подставляется при выкате: в репозиторий он не попадает.
+notifications:
+  events:
+    includereferences: false
+  endpoints:
+    - name: platform
+      url: http://zerotomvp-app:3000/api/registry/events
+      headers:
+        Authorization: [Bearer __REGISTRY_EVENTS_SECRET__]
+      timeout: 5s
+      threshold: 3
+      backoff: 10s
+      ignoredmediatypes:
+        - application/octet-stream
+      ignore:
+        actions:
+          - pull

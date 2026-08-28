@@ -17,6 +17,7 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     REGISTRY_TOKEN_KID: 'test-key',
     REGISTRY_INTERNAL_URL: 'http://registry.internal:5000',
     REGISTRY_PULL_SECRET: 'test-pull-secret-at-least-24-chars',
+    REGISTRY_EVENTS_SECRET: 'test-events-secret-at-least-24-chars',
     ...overrides,
   }
 }

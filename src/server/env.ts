@@ -32,6 +32,8 @@ const schema = z.object({
    * чтобы скачивать образы. Даёт только чтение и только внутренним службам.
    */
   REGISTRY_PULL_SECRET: z.string().min(24),
+  /** Пароль, которым реестр подтверждает, что уведомление о публикации от него. */
+  REGISTRY_EVENTS_SECRET: z.string().min(24),
 })
 
 export type Env = z.infer<typeof schema>

@@ -5,6 +5,8 @@ import { EnvError, env } from './env.ts'
 import { loadRegistrySigningKey } from './registry/key.ts'
 import { createGitHubJwks } from './registry/oidc.ts'
 import { createRegistryRoutes } from './routes/registry.ts'
+import { createRegistryEventRoutes } from './routes/registry-events.ts'
+import { setDesiredImage } from './runtime/state.ts'
 import { sandboxHostMiddleware } from './routes/sandbox-host.ts'
 import { resolveSandboxState } from './sandbox-status/resolve.ts'
 import { createProvision } from './sandboxes/provision.ts'
@@ -35,6 +37,10 @@ async function main() {
     provision: createProvision({ pool, env: config }),
     sandboxHost: sandboxHostMiddleware({ env: config, pool, signing }),
     sandboxState: (name) => resolveSandboxState({ env: config, pool, signing }, name),
+    registryEvents: createRegistryEventRoutes({
+      env: config,
+      onImagePushed: (name, digest) => setDesiredImage(pool, name, digest),
+    }),
     registryRoutes: createRegistryRoutes({
       env: config,
       jwks: createGitHubJwks(),

@@ -20,6 +20,8 @@ export type AppDeps = {
   sandboxHost?: MiddlewareHandler
   /** Состояние сэндбокса для страницы результата. */
   sandboxState?: (name: string) => Promise<{ kind: string }>
+  /** Приём уведомлений реестра о публикации образа. */
+  registryEvents?: Hono
   /** Каталог собранного клиента. Подменяется в тестах. */
   clientDir?: string
   fetchImpl?: Fetch
@@ -30,6 +32,7 @@ export function createApp({
   healthChecks,
   provision,
   registryRoutes,
+  registryEvents,
   sandboxHost,
   sandboxState,
   clientDir = DEFAULT_CLIENT_DIR,
@@ -61,6 +64,7 @@ export function createApp({
 
   api.route('/auth', createAuthRoutes({ env, provision, fetchImpl }))
   if (registryRoutes) api.route('/registry', registryRoutes)
+  if (registryEvents) api.route('/registry', registryEvents)
   app.route('/api', api)
 
   // Неизвестный путь под /api — это ошибка API, а не заявка на клиентский маршрут.
