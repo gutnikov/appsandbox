@@ -43,6 +43,14 @@ vi.mock('./docker.ts', () => ({
   login: async () => {},
 }))
 
+// Работа с Postgres проверяется отдельно в datastore.test.ts, здесь она
+// только мешала бы: тесту сведения незачем создавать настоящие базы.
+vi.mock('./datastore.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./datastore.ts')>()),
+  ensureDatastore: async () => {},
+  dropDatastore: async () => {},
+}))
+
 const { Reconciler } = await import('./reconciler.ts')
 
 const DATABASE_URL = process.env.DATABASE_URL

@@ -107,8 +107,13 @@ export async function startSandbox(
   sandbox: string,
   imageRef: string,
   limits: SandboxLimits,
+  env: Record<string, string> = {},
 ): Promise<void> {
   await removeContainer(sandbox)
+
+  // Реквизиты передаём окружением, а не образом: образ живёт в реестре дольше
+  // самого сэндбокса, и секрет в нём пережил бы его удаление.
+  const envArgs = Object.entries(env).flatMap(([key, value]) => ['--env', `${key}=${value}`])
 
   await docker([
     'run',
@@ -142,6 +147,7 @@ export async function startSandbox(
     'PORT=3000',
     '--env',
     'NODE_ENV=production',
+    ...envArgs,
     imageRef,
   ])
 }
@@ -186,6 +192,15 @@ export async function unrouteSandbox(sandbox: string): Promise<void> {
   await docker(['exec', PROXY_CONTAINER, 'kamal-proxy', 'remove', proxyService(sandbox)]).catch(
     () => '',
   )
+}
+
+/**
+ * Подключает контейнер к сети. Процесс сведения зовёт это для самого себя:
+ * Kamal умеет задать только одну сеть, а ему нужны обе — своя и сеть
+ * сэндбоксов, где живёт их Postgres.
+ */
+export async function attachToNetwork(container: string, network: string): Promise<void> {
+  await docker(['network', 'connect', network, container]).catch(() => '')
 }
 
 /** Какие сэндбоксы сейчас имеют собственный маршрут в прокси. */

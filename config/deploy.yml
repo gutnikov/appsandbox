@@ -77,6 +77,7 @@ env:
     - REGISTRY_TOKEN_KEY
     - REGISTRY_PULL_SECRET
     - REGISTRY_EVENTS_SECRET
+    - SANDBOX_DB_ADMIN_URL
 
 # Миграции накатываются отдельной командой, а не при старте контейнера:
 # на выкате их должно быть видно как самостоятельный шаг.

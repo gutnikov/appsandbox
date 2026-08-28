@@ -1,6 +1,6 @@
 import { createPool } from '../db/pool.ts'
 import { EnvError, env } from '../env.ts'
-import { login } from './docker.ts'
+import { attachToNetwork, login } from './docker.ts'
 import { PLATFORM_PULL_USER } from '../routes/registry.ts'
 import { Reconciler } from './reconciler.ts'
 import { loadRegistrySigningKey } from '../registry/key.ts'
@@ -26,6 +26,15 @@ async function main() {
   }
 
   const pool = createPool(config.DATABASE_URL)
+
+  // Kamal умеет задать контейнеру только одну сеть, а нам нужны обе: своя и
+  // сеть сэндбоксов, где живёт их Postgres. Доступ к docker у нас уже есть,
+  // поэтому подключаем себя сами — и переживаем этим любой выкат.
+  const self = process.env['KAMAL_CONTAINER_NAME']
+  if (self) {
+    await attachToNetwork(self, SANDBOX_NETWORK)
+    console.log(`подключился к сети ${SANDBOX_NETWORK}`)
+  }
 
   // Печатаем до входа в реестр: если вход зависнет, пустой лог не объяснит,
   // на чём именно.

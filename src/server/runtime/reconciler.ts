@@ -11,6 +11,8 @@ import {
   startSandbox,
   unrouteSandbox,
 } from './docker.ts'
+import { environmentFor, ensureSecrets, readSecrets } from './credentials.ts'
+import { dropDatastore, ensureDatastore } from './datastore.ts'
 import type { RunStatus } from './state.ts'
 
 export type ReconcilerConfig = {
@@ -160,6 +162,14 @@ export class Reconciler {
       if (byName.has(container.sandbox)) continue
       this.log(`убираю осиротевший контейнер ${container.sandbox}`)
       await removeContainer(container.sandbox)
+
+      // Хранилище уходит вместе с сэндбоксом: данные, за которыми не стоит
+      // ни одна запись, никто уже не увидит, а место они занимают.
+      const secrets = await readSecrets(this.config.pool, container.sandbox)
+      if (secrets) {
+        this.log(`убираю базу осиротевшего сэндбокса ${container.sandbox}`)
+        await dropDatastore(this.config.env.SANDBOX_DB_ADMIN_URL, secrets)
+      }
     }
 
     for (const name of routed) {
@@ -228,8 +238,22 @@ export class Reconciler {
     await setRun(this.config.pool, row.name, { status: 'starting' })
 
     try {
+      // Реквизиты выдаются при первом запуске и дальше не меняются. Сэндбоксы,
+      // созданные до появления хранилища, получают их здесь же.
+      const secrets = await ensureSecrets(this.config.pool, row.name)
+      await ensureDatastore(this.config.env.SANDBOX_DB_ADMIN_URL, secrets)
+
       await pull(reference)
-      await startSandbox(row.name, reference, this.config.limits)
+      await startSandbox(
+        row.name,
+        reference,
+        this.config.limits,
+        environmentFor(
+          this.config.env.SANDBOX_DB_ADMIN_URL,
+          secrets,
+          `https://${row.name}.${this.apexHost}`,
+        ),
+      )
       await routeSandbox(row.name, `${row.name}.${this.apexHost}`)
     } catch (error) {
       const reason = error instanceof Error ? error.message.slice(0, 300) : 'неизвестная ошибка'

@@ -41,6 +41,11 @@ const schema = z.object({
   SANDBOX_LIFETIME_MINUTES: z.coerce.number().int().positive().default(30),
   SANDBOX_MEMORY_MB: z.coerce.number().int().positive().default(160),
   SANDBOX_CPUS: z.coerce.number().positive().default(0.5),
+  /**
+   * Административное подключение к Postgres сэндбоксов. Из него же выводится
+   * строка подключения каждого сэндбокса: хост у них общий.
+   */
+  SANDBOX_DB_ADMIN_URL: z.string().min(1),
 })
 
 export type Env = z.infer<typeof schema>

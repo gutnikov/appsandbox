@@ -117,9 +117,16 @@ describe.runIf(DATABASE_URL)('реестр имён сэндбоксов', () =>
     })
     expect(row.provisioned_at).toBeInstanceOf(Date)
 
+    // Требование — не хранить токен доступа пользователя к GitHub. Раньше это
+    // проверялось отсутствием столбцов со словами secret и password, но такой
+    // заменитель развалился, когда платформа стала законно хранить секреты
+    // самих сэндбоксов. Проверяем требование, а не его признак.
+    const { rows: all } = await pool.query('select * from sandboxes')
+    expect(JSON.stringify(all)).not.toMatch(/gho_|ghp_|ghs_|github_pat_/)
+
     const { fields } = await pool.query('select * from sandboxes limit 1')
     const columns = fields.map((field) => field.name)
-    expect(columns.some((column) => /token|secret|password/i.test(column))).toBe(false)
+    expect(columns.some((column) => /github.*token|access.?token|oauth/i.test(column))).toBe(false)
   })
 
   it('находит сэндбокс по репозиторию — для сверки OIDC-удостоверений', async () => {

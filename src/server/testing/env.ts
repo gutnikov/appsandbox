@@ -22,6 +22,7 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     SANDBOX_LIFETIME_MINUTES: 30,
     SANDBOX_MEMORY_MB: 160,
     SANDBOX_CPUS: 0.5,
+    SANDBOX_DB_ADMIN_URL: 'postgres://sandboxadmin:pw@sandbox-db:5432/sandboxadmin',
     ...overrides,
   }
 }

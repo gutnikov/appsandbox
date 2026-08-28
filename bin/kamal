@@ -51,4 +51,5 @@ exec docker run --rm -i \
   -e REGISTRY_TOKEN_KEY \
   -e REGISTRY_PULL_SECRET \
   -e REGISTRY_EVENTS_SECRET \
+  -e SANDBOX_DB_ADMIN_URL \
   "ghcr.io/basecamp/kamal@$KAMAL_IMAGE_DIGEST" "$@"
