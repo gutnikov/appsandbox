@@ -5,10 +5,10 @@
 
 ## 2. Каркас приложения платформы
 
-- [ ] 2.1 Инициализировать TypeScript-проект с Hono, Vite, React, TanStack Router, TanStack Query и shadcn/ui; проверка — `pnpm build` собирает бандл, `pnpm dev` поднимает приложение локально
-- [ ] 2.2 Настроить отдачу собранного SPA из Hono и fallback на `index.html` для клиентских маршрутов; проверка — прямой переход на несуществующий серверу клиентский путь возвращает приложение, а не 404
-- [ ] 2.3 Ввести типизированное чтение конфигурации из окружения с обязательными `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_OAUTH_REDIRECT_URI`, `DATABASE_URL`, `SESSION_SECRET`, `TEMPLATE_REPO`, `PUBLIC_BASE_URL`, `REGISTRY_HOST`, `REGISTRY_TOKEN_KEY`; проверка — запуск без любой из них падает с сообщением, называющим переменную (спека `platform-deployment`)
-- [ ] 2.4 Добавить endpoint `/healthz`, проверяющий доступность базы; проверка — при недоступной базе endpoint не возвращает успешный статус
+- [x] 2.1 Инициализировать TypeScript-проект с Hono, Vite, React, TanStack Router, TanStack Query и shadcn/ui; проверка — `pnpm build` собирает бандл, `pnpm dev` поднимает приложение локально
+- [x] 2.2 Настроить отдачу собранного SPA из Hono и fallback на `index.html` для клиентских маршрутов; проверка — прямой переход на несуществующий серверу клиентский путь возвращает приложение, а не 404
+- [x] 2.3 Ввести типизированное чтение конфигурации из окружения с обязательными `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_OAUTH_REDIRECT_URI`, `DATABASE_URL`, `SESSION_SECRET`, `TEMPLATE_REPO`, `PUBLIC_BASE_URL`, `REGISTRY_HOST`, `REGISTRY_TOKEN_KEY`; проверка — запуск без любой из них падает с сообщением, называющим переменную (спека `platform-deployment`)
+- [ ] 2.4 Добавить endpoint `/healthz`, проверяющий доступность базы; проверка — при недоступной базе endpoint не возвращает успешный статус (каркас с реестром проверок готов, проверка базы подключается в задаче 3.1)
 
 ## 3. База и реестр имён
 
