@@ -1,0 +1,8 @@
+[Unit]
+Description=Продление wildcard-сертификата zerotomvp
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/etc/zerotomvp/renew-cert.sh

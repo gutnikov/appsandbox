@@ -1,0 +1,12 @@
+[Unit]
+Description=Ежедневная проверка срока wildcard-сертификата
+
+[Timer]
+# Раз в сутки со случайным сдвигом: сертификат живёт 90 дней, а lego
+# обновляет его за треть срока до конца — запаса больше чем достаточно.
+OnCalendar=daily
+RandomizedDelaySec=4h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
