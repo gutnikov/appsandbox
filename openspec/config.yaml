@@ -1,0 +1,26 @@
+schema: spec-driven
+
+context: |
+  Language: Russian
+  All artifacts must be written in Russian. Code identifiers, file paths, CLI
+  commands, API routes, env var names and technology names stay in English.
+
+  Продукт: zerotomvp (zerotomvp.xyz) — платформа для запуска прототипов
+  приложений. Пользователь логинится через GitHub, мы создаём ему репозиторий
+  из нашего шаблона (gutnikov/sandbox-template) и хостим прототип на поддомене
+  <sandbox-name>.zerotomvp.xyz.
+
+  Наш стек: Hono (API + отдача собранного SPA), React, TanStack Router/Query,
+  Vite, shadcn/ui, TypeScript. БД — Postgres в Neon. Деплой — Kamal на VPS,
+  образ в GHCR.
+
+  Стек шаблона сэндбокса: тот же (Hono + React + Vite + shadcn), плюс
+  Dockerfile. Сборка образа сэндбокса идёт в GitHub Actions внутри
+  репозитория пользователя и пушится в его GHCR; мы образ только пуллим.
+
+  Инварианты:
+  - имя сэндбокса всегда с префиксом `sandbox-` и совпадает с поддоменом
+  - сессионная кука ставится только host-only на апексе, никогда с
+    Domain=.zerotomvp.xyz (поддомены отдаются под пользовательский код)
+  - GitHub-токен пользователя не сохраняется: используется в рамках одного
+    запроса и выбрасывается
