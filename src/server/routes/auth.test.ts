@@ -1,26 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { Env } from '../env.ts'
 import { createApp } from '../app.ts'
+import { testEnv } from '../testing/env.ts'
 import type { Provision } from './auth.ts'
 
 const TOKEN = 'gho_secret_access_token_value'
-
-function testEnv(overrides: Partial<Env> = {}): Env {
-  return {
-    NODE_ENV: 'test',
-    PORT: 3000,
-    PUBLIC_BASE_URL: 'https://zerotomvp.xyz',
-    GITHUB_CLIENT_ID: 'client-id',
-    GITHUB_CLIENT_SECRET: 'client-secret',
-    GITHUB_OAUTH_REDIRECT_URI: 'https://zerotomvp.xyz/api/auth/github/callback',
-    TEMPLATE_REPO: 'gutnikov/sandbox-template',
-    DATABASE_URL: 'postgres://unused',
-    SESSION_SECRET: 'test-session-secret-at-least-32-chars',
-    REGISTRY_HOST: 'registry.zerotomvp.xyz',
-    REGISTRY_TOKEN_KEY: 'registry-key',
-    ...overrides,
-  }
-}
 
 type Harness = {
   app: ReturnType<typeof createApp>
@@ -79,7 +63,7 @@ async function startAuth(h: Harness) {
 
 describe('старт авторизации', () => {
   it('ведёт на GitHub и запрашивает только public_repo', async () => {
-    const { response } = await harness().app.request('/api/auth/github').then((r) => ({ response: r }))
+    const response = await harness().app.request('/api/auth/github')
 
     expect(response.status).toBe(302)
     const location = new URL(response.headers.get('location') as string)

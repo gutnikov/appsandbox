@@ -2,9 +2,13 @@ import { serve } from '@hono/node-server'
 import { createApp } from './app.ts'
 import { createPool, databaseHealthCheck } from './db/pool.ts'
 import { EnvError, env } from './env.ts'
+import { loadRegistrySigningKey } from './registry/key.ts'
+import { createGitHubJwks } from './registry/oidc.ts'
+import { createRegistryRoutes } from './routes/registry.ts'
 import { createProvision } from './sandboxes/provision.ts'
+import { findByRepoFullName } from './sandboxes/registry.ts'
 
-function main() {
+async function main() {
   let config
   try {
     config = env()
@@ -17,10 +21,25 @@ function main() {
   }
 
   const pool = createPool(config.DATABASE_URL)
+
+  const signing = await loadRegistrySigningKey(
+    config.REGISTRY_TOKEN_KEY,
+    config.REGISTRY_TOKEN_KID,
+  )
+
   const app = createApp({
     env: config,
     healthChecks: [databaseHealthCheck(pool)],
     provision: createProvision({ pool, env: config }),
+    registryRoutes: createRegistryRoutes({
+      env: config,
+      jwks: createGitHubJwks(),
+      signing,
+      lookupSandbox: async (repoFullName) => {
+        const row = await findByRepoFullName(pool, repoFullName)
+        return row ? { name: row.name, githubLogin: row.github_login } : undefined
+      },
+    }),
   })
 
   const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
@@ -36,4 +55,7 @@ function main() {
   process.on('SIGINT', shutdown)
 }
 
-main()
+main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : error)
+  process.exit(1)
+})

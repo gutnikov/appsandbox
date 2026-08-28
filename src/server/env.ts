@@ -21,7 +21,10 @@ const schema = z.object({
   SESSION_SECRET: z.string().min(32, 'нужно не меньше 32 символов'),
 
   REGISTRY_HOST: z.string().min(1),
+  /** Приватный ключ подписи токенов реестра: PKCS#8 PEM или он же в base64. */
   REGISTRY_TOKEN_KEY: z.string().min(1),
+  /** Должен совпадать с идентификатором ключа в JWKS, который читает реестр. */
+  REGISTRY_TOKEN_KID: z.string().min(1),
 })
 
 export type Env = z.infer<typeof schema>

@@ -13,10 +13,12 @@ export type AppDeps = {
   env: Env
   healthChecks: readonly HealthCheck[]
   provision: Provision
+  /** Роуты выдачи прав реестру образов. Без них приложение тоже поднимается. */
+  registryRoutes?: Hono
   fetchImpl?: Fetch
 }
 
-export function createApp({ env, healthChecks, provision, fetchImpl }: AppDeps) {
+export function createApp({ env, healthChecks, provision, registryRoutes, fetchImpl }: AppDeps) {
   const app = new Hono()
 
   app.get('/healthz', async (c) => {
@@ -26,7 +28,7 @@ export function createApp({ env, healthChecks, provision, fetchImpl }: AppDeps) 
 
   const api = new Hono()
   api.route('/auth', createAuthRoutes({ env, provision, fetchImpl }))
-  // Сюда позже встанет выдача прав реестру образов.
+  if (registryRoutes) api.route('/registry', registryRoutes)
   app.route('/api', api)
 
   // Неизвестный путь под /api — это ошибка API, а не заявка на клиентский маршрут.

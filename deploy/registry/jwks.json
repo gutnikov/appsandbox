@@ -1,0 +1,13 @@
+{
+  "keys": [
+    {
+      "kty": "EC",
+      "x": "s-nNvSFlUVmeUL3SCuYWDwRJBII7gJRXRaJxCETLItw",
+      "y": "_3c33-dK1zorVcPHR6rjc5TNpts0MoAub5UFhpM3gFo",
+      "crv": "P-256",
+      "kid": "zerotomvp-registry-1",
+      "alg": "ES256",
+      "use": "sig"
+    }
+  ]
+}
