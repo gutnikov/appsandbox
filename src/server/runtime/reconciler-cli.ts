@@ -30,6 +30,10 @@ async function main() {
 
   const pool = createPool(config.DATABASE_URL)
 
+  // Печатаем до входа в реестр: если вход зависнет, пустой лог не объяснит,
+  // на чём именно.
+  console.log(`вхожу в реестр ${config.REGISTRY_HOST} как ${PLATFORM_PULL_USER}`)
+
   // Образы сэндбоксов лежат в закрытом реестре: внутренним службам платформы
   // выдаётся доступ только на чтение.
   await login(config.REGISTRY_HOST, PLATFORM_PULL_USER, config.REGISTRY_PULL_SECRET)

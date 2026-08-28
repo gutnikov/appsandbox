@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 
 const run = promisify(execFile)
@@ -66,12 +66,33 @@ export async function listSandboxContainers(): Promise<SandboxContainer[]> {
   })
 }
 
-export async function login(registry: string, user: string, password: string): Promise<void> {
-  await run('docker', ['login', registry, '-u', user, '--password-stdin'], {
-    timeout: 30_000,
-    // Пароль уходит через стандартный ввод: в списке процессов ему не место.
-    input: password,
-  } as Parameters<typeof run>[2])
+/**
+ * Пароль уходит через стандартный ввод: в списке процессов ему не место.
+ * Именно поэтому здесь spawn, а не execFile — у асинхронного execFile нет
+ * возможности передать ввод, и он просто повиснет в ожидании.
+ */
+export function login(registry: string, user: string, password: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('docker', ['login', registry, '-u', user, '--password-stdin'], {
+      stdio: ['pipe', 'ignore', 'pipe'],
+    })
+
+    let stderr = ''
+    child.stderr.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString()
+    })
+
+    const timer = setTimeout(() => child.kill('SIGKILL'), 30_000)
+
+    child.on('error', reject)
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      if (code === 0) resolve()
+      else reject(new Error(`docker login завершился с кодом ${code}: ${stderr.trim()}`))
+    })
+
+    child.stdin.end(password)
+  })
 }
 
 export async function pull(imageRef: string): Promise<void> {
