@@ -65,6 +65,13 @@ async function setDesired(pool: Pool, name: string, desired: 'stopped' | 'runnin
   await pool.query('update sandboxes set desired_state = $2 where name = $1', [name, desired])
 }
 
+/**
+ * Произвольное, но постоянное число. Под этим ключом процессы сведения
+ * сериализуются: во время выката новый процесс поднимается до удаления
+ * старого, и без блокировки они могли бы тянуть контейнеры в разные стороны.
+ */
+const ADVISORY_LOCK_KEY = 7_314_902_551
+
 export class Reconciler {
   private readonly config: ReconcilerConfig
   private readonly log: (message: string) => void
@@ -76,8 +83,32 @@ export class Reconciler {
     this.apexHost = new URL(config.env.PUBLIC_BASE_URL).host
   }
 
-  /** Один проход сведения. Идемпотентен: повторный вызов ничего не ломает. */
-  async tick(): Promise<void> {
+  /**
+   * Один проход сведения. Идемпотентен: повторный вызов ничего не ломает.
+   * Возвращает false, если проход пропущен из-за другого работающего процесса.
+   */
+  async tick(): Promise<boolean> {
+    const client = await this.config.pool.connect()
+    try {
+      const { rows } = await client.query<{ locked: boolean }>(
+        'select pg_try_advisory_lock($1) as locked',
+        [ADVISORY_LOCK_KEY],
+      )
+      if (!rows[0]?.locked) return false
+
+      try {
+        await this.reconcile()
+      } finally {
+        await client.query('select pg_advisory_unlock($1)', [ADVISORY_LOCK_KEY])
+      }
+    } finally {
+      client.release()
+    }
+
+    return true
+  }
+
+  private async reconcile(): Promise<void> {
     const rows = await load(this.config.pool)
     const containers = await listSandboxContainers()
     const routed = await routedSandboxes()

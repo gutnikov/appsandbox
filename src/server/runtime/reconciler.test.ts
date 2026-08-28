@@ -199,6 +199,29 @@ describe.runIf(DATABASE_URL)('сведение состояний', () => {
     expect(docker.calls).not.toContain('start:sandbox-bad')
   })
 
+  it('пока один процесс работает, второй проход пропускается', async () => {
+    await seed('sandbox-one', { desired_state: 'running', last_requested_at: new Date() })
+
+    // Второй процесс сведения существует наяву: во время выката Kamal
+    // поднимает новый до удаления старого.
+    const busy = createPool(DATABASE_URL as string)
+    try {
+      const held = await busy.connect()
+      await held.query('select pg_advisory_lock(7314902551)')
+
+      expect(await make().tick()).toBe(false)
+      expect(docker.calls).toEqual([])
+
+      await held.query('select pg_advisory_unlock(7314902551)')
+      held.release()
+    } finally {
+      await busy.end()
+    }
+
+    expect(await make().tick()).toBe(true)
+    expect(docker.calls).toContain('start:sandbox-one')
+  })
+
   it('восстанавливает исчезнувший контейнер', async () => {
     await seed('sandbox-one', { desired_state: 'running', last_requested_at: new Date() })
     await make().tick()
