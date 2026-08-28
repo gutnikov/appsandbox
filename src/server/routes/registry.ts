@@ -13,7 +13,20 @@ export type RegistryRoutesDeps = {
   jwks: JwksResolver
   signing: SigningKey
   lookupSandbox: SandboxLookup
+  /** Подменяется в тестах, чтобы не засорять вывод. */
+  log?: (message: string) => void
 }
+
+/**
+ * Отказ клиенту всегда один и тот же, а причина нужна оператору: без неё
+ * «нет прав на публикацию» неотличимо от испорченной подписи, отсутствующей
+ * записи о сэндбоксе и чужого владельца.
+ */
+type DenyReason =
+  | 'no_credentials'
+  | 'bad_identity'
+  | 'unknown_sandbox'
+  | 'owner_mismatch'
 
 /** Логин в `docker login` не значим: удостоверение приходит вместо пароля. */
 function readBearerCredential(header: string | undefined): string | undefined {
@@ -27,6 +40,12 @@ function readBearerCredential(header: string | undefined): string | undefined {
 
 export function createRegistryRoutes(deps: RegistryRoutesDeps) {
   const routes = new Hono()
+  const log = deps.log ?? ((message: string) => console.warn(message))
+
+  const deny = (c: Context, service: string, reason: DenyReason, detail = '') => {
+    log(`реестр: отказ (${reason})${detail ? ` ${detail}` : ''}`)
+    return unauthorized(c, service)
+  }
 
   routes.get('/token', async (c) => {
     const service = c.req.query('service') ?? deps.env.REGISTRY_HOST
@@ -35,24 +54,26 @@ export function createRegistryRoutes(deps: RegistryRoutesDeps) {
     const credential = readBearerCredential(c.req.header('authorization'))
     if (!credential) {
       // Анонимный доступ к реестру закрыт полностью: ни чтения, ни списка.
-      return unauthorized(c, service)
+      return deny(c, service, 'no_credentials')
     }
 
     let identity
     try {
       identity = await verifyWorkflowIdentity(credential, { jwks: deps.jwks })
     } catch (error) {
-      if (error instanceof OidcError) return unauthorized(c, service)
+      if (error instanceof OidcError) return deny(c, service, 'bad_identity', error.reason)
       throw error
     }
 
     // Репозиторий из удостоверения должен соответствовать созданному сэндбоксу.
     const sandbox = await deps.lookupSandbox(identity.repository)
-    if (!sandbox) return unauthorized(c, service)
+    if (!sandbox) return deny(c, service, 'unknown_sandbox', identity.repository)
 
     // Владелец репозитория обязан совпадать с владельцем сэндбокса: иначе
     // форк чужого сэндбокса получил бы право писать в чужой образ.
-    if (identity.repositoryOwner !== sandbox.githubLogin) return unauthorized(c, service)
+    if (identity.repositoryOwner !== sandbox.githubLogin) {
+      return deny(c, service, 'owner_mismatch', `${identity.repository} ≠ ${sandbox.githubLogin}`)
+    }
 
     const access = grantOnly(parseScopes(scopes), sandbox.name)
 
