@@ -72,6 +72,9 @@ async function setDesired(pool: Pool, name: string, desired: 'stopped' | 'runnin
  */
 const ADVISORY_LOCK_KEY = 7_314_902_551
 
+/** Насколько свежим считается обращение, защищающее сэндбокс от вытеснения. */
+const JUST_REQUESTED_MS = 30_000
+
 export class Reconciler {
   private readonly config: ReconcilerConfig
   private readonly log: (message: string) => void
@@ -186,10 +189,25 @@ export class Reconciler {
     const wanted = rows.filter((row) => row.desired_state === 'running')
     if (wanted.length <= this.config.maxRunning) return
 
+    // Только что запрошенный сэндбокс не вытесняем: иначе мы остановим его и
+    // тем же проходом поднимем обратно. На живом сервере это было видно как
+    // «вытесняю» и сразу «поднимаю» одного и того же.
+    const fresh = Date.now() - JUST_REQUESTED_MS
+    const evictable = wanted.filter(
+      (row) => !row.last_requested_at || row.last_requested_at.getTime() < fresh,
+    )
+
     // Строки уже отсортированы по давности обращения.
-    for (const row of wanted.slice(0, wanted.length - this.config.maxRunning)) {
+    const excess = wanted.length - this.config.maxRunning
+    for (const row of evictable.slice(0, excess)) {
       this.log(`вытесняю ради места: ${row.name}`)
       await setDesired(this.config.pool, row.name, 'stopped')
+    }
+
+    if (evictable.length < excess) {
+      this.log(
+        `мест не хватает, но вытеснять некого: все ${wanted.length} запрошены только что`,
+      )
     }
   }
 

@@ -149,6 +149,27 @@ describe.runIf(DATABASE_URL)('сведение состояний', () => {
     expect(docker.calls).not.toContain('start:sandbox-old')
   })
 
+  it('только что запрошенный не вытесняется: иначе остановим и сразу поднимем', async () => {
+    // Оба запрошены секунду назад, мест — одно.
+    await seed('sandbox-one', { desired_state: 'running', last_requested_at: new Date() })
+    await seed('sandbox-two', { desired_state: 'running', last_requested_at: new Date() })
+
+    await make({ maxRunning: 1 }).tick()
+
+    const stopped = [
+      (await read('sandbox-one')).desired_state,
+      (await read('sandbox-two')).desired_state,
+    ].filter((state) => state === 'stopped')
+
+    expect(stopped).toEqual([])
+    // Ни одного «остановил и тут же поднял» в одном проходе.
+    for (const name of ['sandbox-one', 'sandbox-two']) {
+      const stops = docker.calls.filter((call) => call === `remove:${name}`).length
+      const starts = docker.calls.filter((call) => call === `start:${name}`).length
+      expect(stops <= starts).toBe(true)
+    }
+  })
+
   it('останавливает по истечении времени жизни', async () => {
     await seed('sandbox-one', { desired_state: 'running', last_requested_at: new Date() })
     await make().tick()
