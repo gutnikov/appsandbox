@@ -12,7 +12,12 @@ import {
   unrouteSandbox,
 } from './docker.ts'
 import { environmentFor, ensureSecrets, readSecrets } from './credentials.ts'
-import { dropDatastore, ensureDatastore } from './datastore.ts'
+import {
+  databaseNameFor,
+  dropDatastore,
+  ensureDatastore,
+  listSandboxDatabases,
+} from './datastore.ts'
 import type { RunStatus } from './state.ts'
 
 export type ReconcilerConfig = {
@@ -120,6 +125,7 @@ export class Reconciler {
     const byName = new Map(rows.map((row) => [row.name, row]))
 
     await this.dropOrphans(containers, byName, routed)
+    await this.dropOrphanDatabases(rows)
     await this.expireIdle(rows)
     await this.enforceLimit(rows)
 
@@ -176,6 +182,39 @@ export class Reconciler {
       if (byName.has(name)) continue
       this.log(`убираю осиротевший маршрут ${name}`)
       await unrouteSandbox(name)
+    }
+  }
+
+  /**
+   * Базы, за которыми не стоит ни один сэндбокс. Осиротевший контейнер ловится
+   * выше, но база остаётся и тогда, когда контейнера не было вовсе.
+   *
+   * Это удаление данных, поэтому обставлено осторожно: список сэндбоксов
+   * читается запросом, который при сбое бросает и обрывает проход до любого
+   * удаления, а пустой список при непустом наборе баз считается признаком
+   * поломки, а не поводом стереть всё.
+   */
+  private async dropOrphanDatabases(rows: Row[]): Promise<void> {
+    const known = new Set(rows.map((row) => databaseNameFor(row.name)))
+    const existing = await listSandboxDatabases(this.config.env.SANDBOX_DB_ADMIN_URL)
+    const orphans = existing.filter((database) => !known.has(database))
+    if (orphans.length === 0) return
+
+    if (known.size === 0) {
+      this.log(
+        `не удаляю ${orphans.length} баз: сэндбоксов не видно вовсе, ` +
+          'это больше похоже на сбой чтения, чем на пустую платформу',
+      )
+      return
+    }
+
+    for (const database of orphans) {
+      this.log(`убираю базу, за которой не стоит сэндбокс: ${database}`)
+      await dropDatastore(this.config.env.SANDBOX_DB_ADMIN_URL, {
+        database,
+        user: database,
+        password: '',
+      })
     }
   }
 

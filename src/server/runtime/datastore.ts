@@ -103,6 +103,19 @@ export async function ensureDatastore(
   })
 }
 
+/**
+ * Базы, похожие на выданные сэндбоксам. Отбор по нашему же префиксу: всё
+ * остальное на этом сервере нас не касается.
+ */
+export async function listSandboxDatabases(adminUrl: string): Promise<string[]> {
+  return withAdmin(adminUrl, async (client) => {
+    const { rows } = await client.query<{ datname: string }>(
+      "select datname from pg_database where datname like 'sb\\_%'",
+    )
+    return rows.map((row) => row.datname)
+  })
+}
+
 /** Убирает базу и пользователя. Вызывается, когда сэндбокса больше нет. */
 export async function dropDatastore(
   adminUrl: string,

@@ -58,10 +58,16 @@ vi.mock('./credentials.ts', async (importOriginal) => {
 
 // Работа с Postgres проверяется отдельно в datastore.test.ts, здесь она
 // только мешала бы: тесту сведения незачем создавать настоящие базы.
+const store = vi.hoisted(() => ({ databases: [] as string[], dropped: [] as string[] }))
+
 vi.mock('./datastore.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./datastore.ts')>()),
   ensureDatastore: async () => {},
-  dropDatastore: async () => {},
+  listSandboxDatabases: async () => store.databases,
+  dropDatastore: async (_url: string, credentials: { database: string }) => {
+    store.dropped.push(credentials.database)
+    store.databases = store.databases.filter((name) => name !== credentials.database)
+  },
 }))
 
 const { Reconciler } = await import('./reconciler.ts')
@@ -121,6 +127,8 @@ describe.runIf(DATABASE_URL)('сведение состояний', () => {
     docker.failStart = false
     docker.calls = []
     secrets.fail = false
+    store.databases = []
+    store.dropped = []
   })
 
   it('поднимает сэндбокс, которого хотят', async () => {
@@ -277,6 +285,25 @@ describe.runIf(DATABASE_URL)('сведение состояний', () => {
     expect(row.run_status).toBe('failed')
     expect(row.run_error).toContain('реквизит')
     expect(docker.calls).not.toContain('start:sandbox-one')
+  })
+
+  it('убирает базу, за которой не стоит сэндбокс', async () => {
+    await seed('sandbox-one', { desired_state: 'running', last_requested_at: new Date() })
+    store.databases = ['sb_one', 'sb_ghost']
+
+    await make().tick()
+
+    expect(store.dropped).toEqual(['sb_ghost'])
+  })
+
+  it('не стирает базы, когда сэндбоксов не видно вовсе', async () => {
+    // Пустой список сэндбоксов при непустом наборе баз — скорее сбой чтения,
+    // чем законно опустевшая платформа. Данные дороже аккуратности.
+    store.databases = ['sb_one', 'sb_two']
+
+    await make().tick()
+
+    expect(store.dropped).toEqual([])
   })
 
   it('восстанавливает исчезнувший контейнер', async () => {
