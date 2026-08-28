@@ -37,14 +37,37 @@ function Row({
   )
 }
 
-type SandboxStateKind = 'no_image' | 'ready' | 'indeterminate' | 'unknown'
+type SandboxStateKind =
+  | 'no_image'
+  | 'ready'
+  | 'starting'
+  | 'running'
+  | 'failed'
+  | 'indeterminate'
+  | 'unknown'
 
 const STATE_TEXT: Record<SandboxStateKind, string> = {
   no_image: 'Сборка ещё не завершилась. Обычно это меньше минуты.',
-  ready: 'Образ собран. Осталось дождаться, когда платформа научится его запускать.',
+  ready: 'Образ собран. Сэндбокс поднимется, как только кто-нибудь откроет адрес.',
+  starting: 'Сэндбокс поднимается.',
+  running: 'Сэндбокс работает — адрес выше уже ведёт в него.',
+  failed: 'Запустить не удалось: приложение не отвечает на проверку готовности.',
   indeterminate: 'Состояние сборки выяснить не удалось.',
   unknown: 'Платформа пока не видит этот сэндбокс.',
 }
+
+const STATE_LABEL: Record<SandboxStateKind, string> = {
+  no_image: 'идёт сборка',
+  ready: 'образ готов',
+  starting: 'запускается',
+  running: 'работает',
+  failed: 'не запустился',
+  indeterminate: 'неизвестно',
+  unknown: 'нет данных',
+}
+
+/** Состояния, в которых что-то ещё меняется и стоит перезапросить. */
+const SETTLED: readonly SandboxStateKind[] = ['running', 'ready', 'failed', 'unknown']
 
 function useSandboxState(name: string) {
   const { data } = useQuery({
@@ -57,7 +80,8 @@ function useSandboxState(name: string) {
     },
     // Пока образа нет, сборка скорее всего идёт прямо сейчас — не заставляем
     // человека обновлять страницу вручную.
-    refetchInterval: (query) => (query.state.data === 'ready' ? false : 5000),
+    refetchInterval: (query) =>
+      query.state.data && SETTLED.includes(query.state.data) ? false : 5000,
   })
 
   return data
@@ -127,11 +151,27 @@ function Created() {
           <span className="flex items-center gap-2.5 font-mono text-[0.85rem]">
             <span
               aria-hidden
-              className={state === 'ready' ? 'bg-accent h-1.5 w-1.5 rounded-full' : 'bg-muted-foreground h-1.5 w-1.5 rounded-full'}
-              style={state && state !== 'ready' ? { animation: 'pulse-dot 2s ease-in-out infinite' } : undefined}
+              className={
+                state && SETTLED.includes(state)
+                  ? 'bg-accent h-1.5 w-1.5 rounded-full'
+                  : 'bg-muted-foreground h-1.5 w-1.5 rounded-full'
+              }
+              style={
+                state && !SETTLED.includes(state)
+                  ? { animation: 'pulse-dot 2s ease-in-out infinite' }
+                  : undefined
+              }
             />
-            <span className={state === 'ready' ? 'text-accent' : 'text-muted-foreground'}>
-              {state === 'ready' ? 'образ готов' : state === 'no_image' ? 'идёт сборка' : '…'}
+            <span
+              className={
+                state === 'failed'
+                  ? 'text-destructive'
+                  : state && SETTLED.includes(state)
+                    ? 'text-accent'
+                    : 'text-muted-foreground'
+              }
+            >
+              {state ? STATE_LABEL[state] : '…'}
             </span>
           </span>
         </Row>

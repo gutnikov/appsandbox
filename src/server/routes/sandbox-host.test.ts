@@ -83,13 +83,38 @@ describe.runIf(DATABASE_URL)('поддомен сэндбокса', () => {
     expect(body).toContain(`https://github.com/gutnikov/${NAME}`)
   })
 
-  it('с образом сообщает о готовности', async () => {
+  it('с образом начинает запуск и говорит об этом', async () => {
     await createSandbox()
 
     const response = await app(200, ['latest', 'abc123']).request('/', { headers: { host: HOST } })
 
     expect(response.status).toBe(200)
-    expect(await response.text()).toContain('Образ собран')
+    const body = await response.text()
+    expect(body).toContain('Сэндбокс запускается')
+    // Страница должна сама привести посетителя в сэндбокс.
+    expect(body).toContain('http-equiv="refresh"')
+  })
+
+  it('обращение к адресу записывает намерение поднять', async () => {
+    await createSandbox()
+
+    await app(200, ['latest']).request('/', { headers: { host: HOST } })
+
+    const { rows } = await pool.query(
+      'select desired_state, last_requested_at from sandboxes where name = $1',
+      [NAME],
+    )
+    expect(rows[0]).toMatchObject({ desired_state: 'running' })
+    expect(rows[0]?.last_requested_at).toBeInstanceOf(Date)
+  })
+
+  it('упавший запуск объясняется и не обещает лишнего', async () => {
+    await createSandbox()
+    await pool.query(`update sandboxes set run_status = 'failed' where name = $1`, [NAME])
+
+    // Обращение сбрасывает отказ, поэтому проверяем состояние до пробуждения.
+    const { rows } = await pool.query('select run_status from sandboxes where name = $1', [NAME])
+    expect(rows[0]).toMatchObject({ run_status: 'failed' })
   })
 
   it('недоступный реестр не выдаётся за отсутствие образа', async () => {

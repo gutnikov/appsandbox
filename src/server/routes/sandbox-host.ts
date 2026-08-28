@@ -18,7 +18,8 @@ export function sandboxHostMiddleware(deps: SandboxHostDeps): MiddlewareHandler 
     const name = host ? sandboxNameFromHost(host, apexHost) : undefined
     if (!name) return next()
 
-    const state = await resolveSandboxState(deps, name)
+    // Обращение к адресу — это и запрос на запуск.
+    const state = await resolveSandboxState(deps, name, { wake: true })
 
     // 404 для несуществующего имени, 200 для существующего, но не запущенного:
     // во втором случае адрес закреплён, просто пока пуст.

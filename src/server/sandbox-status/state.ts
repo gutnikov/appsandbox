@@ -6,8 +6,14 @@ export type SandboxState =
   | { kind: 'unknown'; name: string }
   /** Сэндбокс есть, но образ ещё ни разу не публиковался. */
   | { kind: 'no_image'; name: string; repoFullName: string | null }
-  /** Образ есть, сэндбокс готов к запуску. */
+  /** Образ есть, сэндбокс остановлен. */
   | { kind: 'ready'; name: string; repoFullName: string | null }
+  /** Образ есть, сэндбокс поднимается прямо сейчас. */
+  | { kind: 'starting'; name: string; repoFullName: string | null }
+  /** Сэндбокс запущен. По его адресу этого состояния не увидеть: там маршрут. */
+  | { kind: 'running'; name: string; repoFullName: string | null }
+  /** Образ есть, но поднять его не удалось. */
+  | { kind: 'failed'; name: string; repoFullName: string | null }
   /** Состояние образа выяснить не удалось. Врать «образа нет» нельзя. */
   | { kind: 'indeterminate'; name: string; repoFullName: string | null }
 

@@ -75,7 +75,26 @@ function copyFor(state: SandboxState, apexHost: string): Copy {
       return {
         label: 'готов к запуску',
         heading: 'Образ собран.',
-        body: 'Сэндбокс собран и ждёт запуска. Платформа пока не умеет поднимать сэндбоксы — это ближайшее, что мы делаем.',
+        body: 'Сэндбокс собран и остановлен. Он поднимется при следующем обращении к этому адресу.',
+        ...(repoUrl ? { cta: { href: repoUrl, text: 'Открыть репозиторий →' } } : {}),
+      }
+    case 'running':
+      return {
+        label: 'запущен',
+        heading: 'Сэндбокс работает.',
+        body: 'Обновите страницу — этот адрес уже ведёт в сам сэндбокс.',
+      }
+    case 'starting':
+      return {
+        label: 'поднимается',
+        heading: 'Сэндбокс запускается.',
+        body: 'Обычно это занимает несколько секунд. Страница обновится сама, как только сэндбокс ответит.',
+      }
+    case 'failed':
+      return {
+        label: 'не запустился',
+        heading: 'Сэндбокс не удалось поднять.',
+        body: 'Образ есть, но приложение внутри не отвечает на проверку готовности. Проверьте, что оно слушает порт из PORT и отвечает на /healthz.',
         ...(repoUrl ? { cta: { href: repoUrl, text: 'Открыть репозиторий →' } } : {}),
       }
     case 'indeterminate':
@@ -103,6 +122,13 @@ export function renderStatusPage(state: SandboxState, apexHost: string): string 
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..600&family=Instrument+Sans:wght@400;500&family=Martian+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>${STYLE}</style>
+${
+  state.kind === 'starting'
+    ? // Перезагружаем страницу, пока сэндбокс не поднимется: как только у него
+      // появится свой маршрут, тот же адрес приведёт уже в сам сэндбокс.
+      '<meta http-equiv="refresh" content="3">'
+    : ''
+}
 </head>
 <body>
 <div class="wrap">
