@@ -1,0 +1,66 @@
+name: image
+
+on:
+  push:
+    branches: [main, add-sandbox-provisioning]
+  workflow_dispatch:
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: zerotomvp
+          POSTGRES_PASSWORD: zerotomvp
+          POSTGRES_DB: zerotomvp
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U zerotomvp"
+          --health-interval 2s --health-timeout 3s --health-retries 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+        env:
+          DATABASE_URL: postgres://zerotomvp:zerotomvp@localhost:5432/zerotomvp
+
+  image:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Тег по коммиту: выкат должен однозначно указывать на код.
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/gutnikov/zerotomvp:${{ github.sha }}
+            ghcr.io/gutnikov/zerotomvp:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

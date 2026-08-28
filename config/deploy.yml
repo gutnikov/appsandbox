@@ -1,0 +1,56 @@
+service: zerotomvp
+image: gutnikov/zerotomvp
+
+servers:
+  web:
+    - 201.51.20.19
+
+# На этом же сервере живёт соседний проект и общий kamal-proxy: маршрутизация
+# идёт по хосту, поэтому апекс мы занимаем, ничего у соседа не отбирая.
+proxy:
+  ssl: true
+  host: zerotomvp.xyz
+  app_port: 3000
+  healthcheck:
+    path: /healthz
+    interval: 3
+    timeout: 5
+
+registry:
+  server: ghcr.io
+  username: gutnikov
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# Образ собирается в GitHub Actions на amd64: машина разработчика arm64, а
+# кросс-сборка под QEMU дороже, чем бесплатный раннер.
+builder:
+  arch: amd64
+
+ssh:
+  user: root
+  keys:
+    - ~/.ssh/zerotomvp_deploy
+
+env:
+  clear:
+    NODE_ENV: production
+    PORT: 3000
+    PUBLIC_BASE_URL: https://zerotomvp.xyz
+    GITHUB_OAUTH_REDIRECT_URI: https://zerotomvp.xyz/api/auth/github/callback
+    GITHUB_CLIENT_ID: Ov23liTG2GhGLqGuVDQ6
+    TEMPLATE_REPO: gutnikov/sandbox-template
+    REGISTRY_HOST: registry.zerotomvp.xyz
+    REGISTRY_TOKEN_KID: zerotomvp-registry-1
+  secret:
+    - DATABASE_URL
+    - SESSION_SECRET
+    - GITHUB_CLIENT_SECRET
+    - REGISTRY_TOKEN_KEY
+
+# Миграции накатываются отдельной командой, а не при старте контейнера:
+# на выкате их должно быть видно как самостоятельный шаг.
+aliases:
+  migrate: app exec --reuse "node dist/server/db/migrate-cli.js"
+  console: app exec --interactive --reuse "sh"
+  logs: app logs --follow
