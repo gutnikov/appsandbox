@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { Footer, Label, Ticks } from '@/components/frame.tsx'
 import { ButtonLink } from '@/components/ui/button.tsx'
@@ -36,9 +37,36 @@ function Row({
   )
 }
 
+type SandboxStateKind = 'no_image' | 'ready' | 'indeterminate' | 'unknown'
+
+const STATE_TEXT: Record<SandboxStateKind, string> = {
+  no_image: 'Сборка ещё не завершилась. Обычно это меньше минуты.',
+  ready: 'Образ собран. Осталось дождаться, когда платформа научится его запускать.',
+  indeterminate: 'Состояние сборки выяснить не удалось.',
+  unknown: 'Платформа пока не видит этот сэндбокс.',
+}
+
+function useSandboxState(name: string) {
+  const { data } = useQuery({
+    queryKey: ['sandbox-state', name],
+    enabled: Boolean(name),
+    queryFn: async (): Promise<SandboxStateKind> => {
+      const response = await fetch(`/api/sandboxes/${encodeURIComponent(name)}/state`)
+      const body = (await response.json()) as { state?: SandboxStateKind }
+      return body.state ?? 'unknown'
+    },
+    // Пока образа нет, сборка скорее всего идёт прямо сейчас — не заставляем
+    // человека обновлять страницу вручную.
+    refetchInterval: (query) => (query.state.data === 'ready' ? false : 5000),
+  })
+
+  return data
+}
+
 function Created() {
   const { name, repo } = Route.useSearch()
   const sandboxHost = useSandboxHost()
+  const state = useSandboxState(name)
 
   if (!name) {
     return (
@@ -86,12 +114,25 @@ function Created() {
           )}
         </Row>
 
-        <Row
-          label="адрес"
-          note="Закреплён за вами. Начнёт отвечать, когда платформа запустит сэндбокс."
-        >
-          <span className="text-muted-foreground font-mono text-[0.85rem] break-all">
+        <Row label="адрес" note="Закреплён за вами. Уже открывается — покажет состояние сборки.">
+          <a
+            href={sandboxUrl}
+            className="text-accent hover:text-foreground font-mono text-[0.85rem] break-all underline decoration-dotted underline-offset-4 transition-colors"
+          >
             {sandboxUrl}
+          </a>
+        </Row>
+
+        <Row label="сборка" note={state ? STATE_TEXT[state] : undefined}>
+          <span className="flex items-center gap-2.5 font-mono text-[0.85rem]">
+            <span
+              aria-hidden
+              className={state === 'ready' ? 'bg-accent h-1.5 w-1.5 rounded-full' : 'bg-muted-foreground h-1.5 w-1.5 rounded-full'}
+              style={state && state !== 'ready' ? { animation: 'pulse-dot 2s ease-in-out infinite' } : undefined}
+            />
+            <span className={state === 'ready' ? 'text-accent' : 'text-muted-foreground'}>
+              {state === 'ready' ? 'образ готов' : state === 'no_image' ? 'идёт сборка' : '…'}
+            </span>
           </span>
         </Row>
       </div>

@@ -6,6 +6,7 @@ import { loadRegistrySigningKey } from './registry/key.ts'
 import { createGitHubJwks } from './registry/oidc.ts'
 import { createRegistryRoutes } from './routes/registry.ts'
 import { sandboxHostMiddleware } from './routes/sandbox-host.ts'
+import { resolveSandboxState } from './sandbox-status/resolve.ts'
 import { createProvision } from './sandboxes/provision.ts'
 import { findByRepoFullName } from './sandboxes/registry.ts'
 
@@ -33,6 +34,7 @@ async function main() {
     healthChecks: [databaseHealthCheck(pool)],
     provision: createProvision({ pool, env: config }),
     sandboxHost: sandboxHostMiddleware({ env: config, pool, signing }),
+    sandboxState: (name) => resolveSandboxState({ env: config, pool, signing }, name),
     registryRoutes: createRegistryRoutes({
       env: config,
       jwks: createGitHubJwks(),

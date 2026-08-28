@@ -18,6 +18,8 @@ export type AppDeps = {
   registryRoutes?: Hono
   /** Обработчик поддоменов сэндбоксов. Без него поддомены получают лендинг. */
   sandboxHost?: MiddlewareHandler
+  /** Состояние сэндбокса для страницы результата. */
+  sandboxState?: (name: string) => Promise<{ kind: string }>
   /** Каталог собранного клиента. Подменяется в тестах. */
   clientDir?: string
   fetchImpl?: Fetch
@@ -29,6 +31,7 @@ export function createApp({
   provision,
   registryRoutes,
   sandboxHost,
+  sandboxState,
   clientDir = DEFAULT_CLIENT_DIR,
   fetchImpl,
 }: AppDeps) {
@@ -48,6 +51,13 @@ export function createApp({
   // Апекс, на поддоменах которого живут сэндбоксы. Клиент не должен его
   // угадывать: адрес сэндбокса — это обещание пользователю.
   api.get('/config', (c) => c.json({ sandboxHost: new URL(env.PUBLIC_BASE_URL).host }))
+
+  if (sandboxState) {
+    api.get('/sandboxes/:name/state', async (c) => {
+      const { kind } = await sandboxState(c.req.param('name'))
+      return c.json({ state: kind }, kind === 'unknown' ? 404 : 200)
+    })
+  }
 
   api.route('/auth', createAuthRoutes({ env, provision, fetchImpl }))
   if (registryRoutes) api.route('/registry', registryRoutes)
