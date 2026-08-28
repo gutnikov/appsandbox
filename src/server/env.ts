@@ -27,6 +27,11 @@ const schema = z.object({
   REGISTRY_TOKEN_KID: z.string().min(1),
   /** Адрес реестра внутри сети контейнеров: ходим напрямую, минуя прокси. */
   REGISTRY_INTERNAL_URL: z.url().default('http://zerotomvp-registry:5000'),
+  /**
+   * Внутренний пароль платформы к реестру: им пользуется процесс сведения,
+   * чтобы скачивать образы. Даёт только чтение и только внутренним службам.
+   */
+  REGISTRY_PULL_SECRET: z.string().min(24),
 })
 
 export type Env = z.infer<typeof schema>

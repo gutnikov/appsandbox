@@ -134,6 +134,44 @@ describe('выдача прав реестру', () => {
   })
 })
 
+describe('внутренний доступ платформы на чтение', () => {
+  function platformAuth(secret: string): Record<string, string> {
+    return { authorization: `Basic ${Buffer.from(`platform:${secret}`).toString('base64')}` }
+  }
+
+  it('по внутреннему паролю даёт чтение любого образа', async () => {
+    const url = `/api/registry/token?scope=${encodeURIComponent('repository:sandbox-any:pull')}`
+    const response = await app().request(url, {
+      headers: platformAuth(testEnv().REGISTRY_PULL_SECRET),
+    })
+
+    expect(response.status).toBe(200)
+    const { payload } = await decode((await response.json()) as never)
+    expect(payload.access).toEqual([
+      { type: 'repository', name: 'sandbox-any', actions: ['pull'] },
+    ])
+  })
+
+  it('права на запись внутренний доступ не даёт', async () => {
+    const url = `/api/registry/token?scope=${encodeURIComponent('repository:sandbox-any:push,pull')}`
+    const response = await app().request(url, {
+      headers: platformAuth(testEnv().REGISTRY_PULL_SECRET),
+    })
+
+    const { payload } = await decode((await response.json()) as never)
+    expect(payload.access).toEqual([
+      { type: 'repository', name: 'sandbox-any', actions: ['pull'] },
+    ])
+  })
+
+  it('неверный внутренний пароль не проходит', async () => {
+    const url = `/api/registry/token?scope=${encodeURIComponent('repository:sandbox-any:pull')}`
+    const response = await app().request(url, { headers: platformAuth('не тот пароль') })
+
+    expect(response.status).toBe(401)
+  })
+})
+
 describe('отказы', () => {
   it('без учётных данных доступа нет', async () => {
     const response = await requestToken(undefined)

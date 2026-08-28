@@ -1,4 +1,5 @@
 import { Hono, type Context } from 'hono'
+import { safeEqual } from '../auth/signing.ts'
 import type { Env } from '../env.ts'
 import { OidcError, type JwksResolver, verifyWorkflowIdentity } from '../registry/oidc.ts'
 import { grantOnly, parseScopes } from '../registry/scope.ts'
@@ -25,17 +26,30 @@ export type RegistryRoutesDeps = {
 type DenyReason =
   | 'no_credentials'
   | 'bad_identity'
+  | 'bad_platform_secret'
   | 'unknown_sandbox'
   | 'owner_mismatch'
 
-/** Логин в `docker login` не значим: удостоверение приходит вместо пароля. */
-function readBearerCredential(header: string | undefined): string | undefined {
+/** Логин платформы, под которым внутренние службы скачивают образы. */
+export const PLATFORM_PULL_USER = 'platform'
+
+type Credential = { user: string; password: string }
+
+function readCredential(header: string | undefined): Credential | undefined {
   if (!header?.toLowerCase().startsWith('basic ')) return undefined
   const decoded = Buffer.from(header.slice(6), 'base64').toString('utf8')
   const separator = decoded.indexOf(':')
   if (separator < 0) return undefined
   const password = decoded.slice(separator + 1)
-  return password || undefined
+  if (!password) return undefined
+  return { user: decoded.slice(0, separator), password }
+}
+
+/** Право только на чтение: внутренним службам большего не нужно. */
+function pullOnly(requests: readonly { type: string; name: string }[]) {
+  return requests
+    .filter((request) => request.type === 'repository' && request.name)
+    .map((request) => ({ type: 'repository', name: request.name, actions: ['pull'] }))
 }
 
 export function createRegistryRoutes(deps: RegistryRoutesDeps) {
@@ -51,15 +65,37 @@ export function createRegistryRoutes(deps: RegistryRoutesDeps) {
     const service = c.req.query('service') ?? deps.env.REGISTRY_HOST
     const scopes = c.req.queries('scope') ?? []
 
-    const credential = readBearerCredential(c.req.header('authorization'))
+    const credential = readCredential(c.req.header('authorization'))
     if (!credential) {
       // Анонимный доступ к реестру закрыт полностью: ни чтения, ни списка.
       return deny(c, service, 'no_credentials')
     }
 
+    // Внутренняя служба платформы: только чтение, зато любого образа.
+    if (credential.user === PLATFORM_PULL_USER) {
+      if (!safeEqual(credential.password, deps.env.REGISTRY_PULL_SECRET)) {
+        return deny(c, service, 'bad_platform_secret')
+      }
+
+      const issued = await issueRegistryToken({
+        signing: deps.signing,
+        issuer: deps.env.PUBLIC_BASE_URL,
+        service,
+        subject: PLATFORM_PULL_USER,
+        access: pullOnly(parseScopes(scopes)),
+      })
+
+      return c.json({
+        token: issued.token,
+        access_token: issued.token,
+        expires_in: issued.expiresIn,
+        issued_at: issued.issuedAt,
+      })
+    }
+
     let identity
     try {
-      identity = await verifyWorkflowIdentity(credential, { jwks: deps.jwks })
+      identity = await verifyWorkflowIdentity(credential.password, { jwks: deps.jwks })
     } catch (error) {
       if (error instanceof OidcError) return deny(c, service, 'bad_identity', error.reason)
       throw error

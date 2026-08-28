@@ -49,4 +49,5 @@ exec docker run --rm -i \
   -e SESSION_SECRET \
   -e GITHUB_CLIENT_SECRET \
   -e REGISTRY_TOKEN_KEY \
+  -e REGISTRY_PULL_SECRET \
   "ghcr.io/basecamp/kamal@$KAMAL_IMAGE_DIGEST" "$@"

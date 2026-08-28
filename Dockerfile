@@ -19,6 +19,9 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile
 
 FROM node:22-alpine
+# Клиент docker нужен процессу сведения состояний. Веб-контейнеру сокет не
+# пробрасывается, поэтому там этот клиент ничего не может.
+RUN apk add --no-cache docker-cli
 # Kamal проверяет эту метку перед запуском. Обычно он ставит её сам, но образ
 # собирается в Actions, поэтому метку задаём здесь.
 LABEL service="zerotomvp"
