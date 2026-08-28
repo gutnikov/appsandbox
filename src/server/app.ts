@@ -4,15 +4,19 @@ import { Hono } from 'hono'
 import { serveStatic } from '@hono/node-server/serve-static'
 import type { Env } from './env.ts'
 import { type HealthCheck, runHealthChecks } from './health.ts'
+import { type Provision, createAuthRoutes } from './routes/auth.ts'
+import type { Fetch } from './github/oauth.ts'
 
 const CLIENT_DIR = './dist/client'
 
 export type AppDeps = {
   env: Env
   healthChecks: readonly HealthCheck[]
+  provision: Provision
+  fetchImpl?: Fetch
 }
 
-export function createApp({ env, healthChecks }: AppDeps) {
+export function createApp({ env, healthChecks, provision, fetchImpl }: AppDeps) {
   const app = new Hono()
 
   app.get('/healthz', async (c) => {
@@ -20,8 +24,9 @@ export function createApp({ env, healthChecks }: AppDeps) {
     return c.json(report, report.status === 'ok' ? 200 : 503)
   })
 
-  // Сюда позже встанут роуты авторизации, создания сэндбокса и выдачи прав реестру.
   const api = new Hono()
+  api.route('/auth', createAuthRoutes({ env, provision, fetchImpl }))
+  // Сюда позже встанет выдача прав реестру образов.
   app.route('/api', api)
 
   // Неизвестный путь под /api — это ошибка API, а не заявка на клиентский маршрут.

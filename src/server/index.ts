@@ -2,6 +2,7 @@ import { serve } from '@hono/node-server'
 import { createApp } from './app.ts'
 import { createPool, databaseHealthCheck } from './db/pool.ts'
 import { EnvError, env } from './env.ts'
+import { createProvision } from './sandboxes/provision.ts'
 
 function main() {
   let config
@@ -16,7 +17,11 @@ function main() {
   }
 
   const pool = createPool(config.DATABASE_URL)
-  const app = createApp({ env: config, healthChecks: [databaseHealthCheck(pool)] })
+  const app = createApp({
+    env: config,
+    healthChecks: [databaseHealthCheck(pool)],
+    provision: createProvision({ pool, env: config }),
+  })
 
   const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
     console.log(`zerotomvp слушает на :${info.port} (${config.NODE_ENV})`)
